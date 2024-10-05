@@ -8,7 +8,7 @@ CREATE TABLE object_types (
 ) ENGINE=InnoDB;
 
 -- default type objects
- INSERT INTO object_type (type_name) VALUES ('satellite'), ('asteroid'), ('comet');
+ INSERT INTO object_type (type_name) VALUES ('satellite'), ('comet'), ('PHA'), ('NEA');
 
 -- Planets table
 CREATE TABLE planets (
