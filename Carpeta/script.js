@@ -1,5 +1,6 @@
 let scene, camera, renderer, controls;
 let planets = [];
+let trails = [];
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 let video;
@@ -73,6 +74,11 @@ function init() {
         const orbit = createOrbit(data.distance, data.inclination);
         scene.add(planet);
         //scene.add(orbit);
+
+        // Crear trazo para el planeta
+        const trail = createTrail();
+        trails.push(trail);
+        scene.add(trail);
     });
 
     // Crear el cinturón de asteroides entre Marte y Júpiter
@@ -112,6 +118,34 @@ function createPlanet({ radius, textureUrl, position, url = null, hasRings = fal
     }
 
     return planet;
+}
+
+// Crear trazo para un planeta
+function createTrail() {
+    const trailLength = 5000;  // Ajusta el número de puntos
+    const trailGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(trailLength * 3);
+    trailGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const trailMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+    return new THREE.Line(trailGeometry, trailMaterial);
+}
+
+// Actualizar la trayectoria del planeta
+function updateTrail(trail, position) {
+    const positions = trail.geometry.attributes.position.array;
+
+    for (let i = positions.length - 3; i > 0; i -= 3) {
+        positions[i] = positions[i - 3];
+        positions[i + 1] = positions[i - 2];
+        positions[i + 2] = positions[i - 1];
+    }
+
+    positions[0] = position.x;
+    positions[1] = position.y;
+    positions[2] = position.z;
+
+    trail.geometry.attributes.position.needsUpdate = true;
 }
 
 // Función para crear órbitas
@@ -193,6 +227,9 @@ function animate() {
 
         // Ajustar la posición 'y' para tener en cuenta la inclinación
         obj.planet.position.y = obj.planet.position.z * Math.tan(THREE.Math.degToRad(obj.inclination));
+
+        // Actualizar la trayectoria (rastro) del planeta
+        updateTrail(trails[index], obj.planet.position);
     });
 
     renderer.render(scene, camera);
