@@ -47,7 +47,7 @@ function init() {
     const loader = new THREE.GLTFLoader();
     loader.load('../img/ISS_stationary.glb', function (gltf) {
         iss = gltf.scene;
-        iss.scale.set(.1, .1, .1);  // Aumentar el tamaño del modelo ISS
+        iss.scale.set(.1, .1,.1);  // Aumentar el tamaño del modelo ISS
         scene.add(iss);
     });
 }
