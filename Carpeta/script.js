@@ -6,9 +6,13 @@ let video;
 const MAX = 499;  // Límite superior
 const MIN = -499; // Límite inferior
 let planetPaths = [];
+let normalSpeed = 0.0001;
+let slowSpeed = 0;
+let currentSpeed = normalSpeed;
+
 
 function limitCameraPosition() {
-    const distanceFromOrigin = Math.sqrt(camera.position.x * 2 + camera.position.y * 2 + camera.position.z ** 2);
+    const distanceFromOrigin = Math.sqrt(camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2);
     if (distanceFromOrigin > MAX) {
         const scale = MAX / distanceFromOrigin;
         camera.position.x *= scale;
@@ -42,14 +46,14 @@ function init() {
     scene.add(sun);
 
     const planetData = [
-        { radius: 1, distance: 10, texture: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRc8BsVr__MysKQ6BCotY5BEK0G1hDyrN6zEg&s', url: './planetas/mercurio.html', eccentricity: 0.2, inclination: 66 },
-        { radius: 1.5, distance: 15, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg', url: './planetas/venus.html', eccentricity: 0.1, inclination: 76 },
-        { radius: 2, distance: 20, texture: 'https://static.diariovasco.com/www/multimedia/201808/22/media/cortadas/mapamundi-kVxD-U60705670296r0C-984x608@Diario%20Vasco.jpg', url: './planetas/tierra.html', eccentricity: 0.017, inclination: 140 },
-        { radius: 1.8, distance: 25, texture: 'https://cdn.pixabay.com/photo/2020/02/04/17/04/map-4818860_1280.jpg', url: './planetas/marte.html', eccentricity: 0.093, inclination: 112 },
-        { radius: 4, distance: 35, texture: 'https://external-preview.redd.it/JJTceYLFNKh1trdhGTiDAku5dMw24H61e8xyi2_TS6g.jpg?auto=webp&s=1f3d29a36611e75f0fa8bf6e25865809a41771ad', url: './planetas/jupiter.html', eccentricity: 0.048, inclination: 120 },
-        { radius: 3, distance: 45, texture: 'https://1.bp.blogspot.com/-KBL1f1hFhWI/Xnk2-C_qlQI/AAAAAAAAUKY/7g78bkJUTMYKtkhUMtOLD_BFiwwnNFQqgCLcBGAsYHQ/s1600/2k_saturn.jpg', url: './planetas/saturno.html', hasRings: true, eccentricity: 0.056, inclination: 110 },
-        { radius: 2.5, distance: 55, texture: 'https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg', url: './planetas/urano.html', eccentricity: 0.046, inclination: 128 },
-        { radius: 2.2, distance: 65, texture: 'https://static.vecteezy.com/system/resources/previews/002/097/266/original/abstract-background-of-neptune-surface-free-vector.jpg', url: './planetas/neptuno.html', eccentricity: 0.009, inclination: 220 }
+        { radius: 1, distance: 10, texture: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRc8BsVr__MysKQ6BCotY5BEK0G1hDyrN6zEg&s', url: './planetas/mercurio.html', eccentricity: 0.2, inclination: 6.6 },
+        { radius: 1.5, distance: 15, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg', url: './planetas/venus.html', eccentricity: 0.1, inclination: 7.6 },
+        { radius: 2, distance: 20, texture: 'https://static.diariovasco.com/www/multimedia/201808/22/media/cortadas/mapamundi-kVxD-U60705670296r0C-984x608@Diario%20Vasco.jpg', url: './planetas/tierra.html', eccentricity: 0.017, inclination: 14.0 },
+        { radius: 1.8, distance: 25, texture: 'https://cdn.pixabay.com/photo/2020/02/04/17/04/map-4818860_1280.jpg', url: './planetas/marte.html', eccentricity: 0.093, inclination: 11.2 },
+        { radius: 4, distance: 35, texture: 'https://external-preview.redd.it/JJTceYLFNKh1trdhGTiDAku5dMw24H61e8xyi2_TS6g.jpg?auto=webp&s=1f3d29a36611e75f0fa8bf6e25865809a41771ad', url: './planetas/jupiter.html', eccentricity: 0.048, inclination: 12.0 },
+        { radius: 3, distance: 45, texture: 'https://1.bp.blogspot.com/-KBL1f1hFhWI/Xnk2-C_qlQI/AAAAAAAAUKY/7g78bkJUTMYKtkhUMtOLD_BFiwwnNFQqgCLcBGAsYHQ/s1600/2k_saturn.jpg', url: './planetas/saturno.html', hasRings: true, eccentricity: 0.056, inclination: 11.0 },
+        { radius: 2.5, distance: 55, texture: 'https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg', url: './planetas/urano.html', eccentricity: 0.046, inclination: 12.8 },
+        { radius: 2.2, distance: 65, texture: 'https://static.vecteezy.com/system/resources/previews/002/097/266/original/abstract-background-of-neptune-surface-free-vector.jpg', url: './planetas/neptuno.html', eccentricity: 0.009, inclination: 22.0 }
     ];
 
     planetData.forEach(data => {
@@ -77,6 +81,7 @@ function init() {
     });
 
     createAsteroidBelt();
+    createAsteroidSphere(5000, 20, 30);
 
     const light = new THREE.PointLight(0xffffff, 1.5, 1000);
     light.position.set(0, 0, 0);
@@ -108,28 +113,37 @@ function createPlanet({ radius, textureUrl, position, url = null, hasRings = fal
         planet.add(rings);
     }
 
+    // Crear y agregar el nombre al planeta
+    if (url) { // Asegurarse de que la URL exista para evitar errores
+        const planetName = url.split('/').pop().replace('.html', '');
+        const planetLabel = createPlanetLabel(planetName);
+        planetLabel.position.set(0, radius + 0.5, 0); // Posiciona el texto ligeramente arriba del planeta
+        planet.add(planetLabel);
+    }
+
     return planet;
 }
 
 function createOrbit(distance, inclination) {
-    const orbitGeometry = new THREE.RingGeometry(distance - 0.05, distance + 0.05, 64);
+    const orbitGeometry = new THREE.RingGeometry(distance - 0.005, distance + 0.005, 300); // Aumenta el número de segmentos a 300
     const orbitMaterial = new THREE.MeshBasicMaterial({
-       color: 0xffffff,
+        color: 0xFFFFFF,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.5
     });
     const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
     orbit.rotation.x = Math.PI / 2;
-    orbit.rotation.z = THREE.Math.degToRad(inclination); 
+    orbit.rotation.z = THREE.Math.degToRad(inclination);
     return orbit;
 }
 
 function createAsteroidBelt() {
     const numAsteroids = 900;
-    const beltRadiusMin = 30;
-    const beltRadiusMax = 30;
+    const beltRadiusMin = 27;
+    const beltRadiusMax = 31;
     const asteroidSize = 0.3;
+    const beltInclination = THREE.Math.degToRad(-15.9); // Convertir grados a radianes
 
     const textureLoader = new THREE.TextureLoader();
     const asteroidTexture = textureLoader.load('https://static.vecteezy.com/system/resources/previews/046/105/391/non_2x/high-resolution-image-texture-of-asteroid-stone-craters-photo.jpg');
@@ -142,13 +156,47 @@ function createAsteroidBelt() {
         const asteroidMaterial = new THREE.MeshBasicMaterial({ map: asteroidTexture });
         const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
 
-        asteroid.position.x = radius * Math.cos(angle);
-        asteroid.position.z = radius * Math.sin(angle);
-        asteroid.position.y = (Math.random() - 0.5) * 2;
+        // Posición de los asteroides en un anillo (en el plano xz)
+        const x = radius * Math.cos(angle);
+        const z = radius * Math.sin(angle);
+        const y = (Math.random() - 0.5) * 2;
+
+        // Aplicar inclinación al cinturón (rotación en el eje X)
+        asteroid.position.x = x;
+        asteroid.position.y = y * Math.cos(beltInclination) - z * Math.sin(beltInclination);
+        asteroid.position.z = y * Math.sin(beltInclination) + z * Math.cos(beltInclination);
 
         scene.add(asteroid);
     }
 }
+
+function createAsteroidSphere(numAsteroids = 600, sphereRadiusMin = 70, sphereRadiusMax = 80) {
+    const asteroidSize = 0.05;
+
+    for (let i = 0; i < numAsteroids; i++) {
+        // Coordenadas esféricas: radio, ángulo azimutal (horizontal), ángulo polar (vertical)
+        const radius = THREE.MathUtils.lerp(sphereRadiusMin, sphereRadiusMax, Math.random()); // Radio aleatorio entre mínimo y máximo
+        const azimuthalAngle = Math.random() * 2 * Math.PI; // Ángulo azimutal entre 0 y 360 grados
+        const polarAngle = Math.acos(2 * Math.random() - 1); // Ángulo polar entre 0 y 180 grados (esfera completa)
+
+        // Convertir coordenadas esféricas a cartesianas
+        const x = radius * Math.sin(polarAngle) * Math.cos(azimuthalAngle);
+        const y = radius * Math.sin(polarAngle) * Math.sin(azimuthalAngle);
+        const z = radius * Math.cos(polarAngle);
+
+        // Crear asteroide
+        const asteroidGeometry = new THREE.SphereGeometry(asteroidSize, 8, 8);
+        const asteroidMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Color azul
+        const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+
+        // Asignar la posición en el espacio 3D
+        asteroid.position.set(x, y, z);
+
+        // Añadir el asteroide a la escena
+        scene.add(asteroid);
+    }
+}
+
 
 function setupVideoBackground() {
     video = document.createElement('video');
@@ -172,35 +220,75 @@ function setupVideoBackground() {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    limitCameraPosition(); // Llamar a la función para limitar la posición de la cámara
+    limitCameraPosition();
 
+    // Detección de intersección con las órbitas
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(planets.map(p => p.planet));
+
+    // Detener el planeta cuando el mouse esté sobre él
     planets.forEach((obj, index) => {
-        const speed = 0.0001 * (index + 1);
+        if (intersects.length > 0 && intersects[0].object === obj.planet) {
+            obj.currentSpeed = slowSpeed;  // Detener el planeta bajo el mouse
+        } else {
+            obj.currentSpeed = normalSpeed;  // Restablecer velocidad normal
+        }
+
+        const speed = obj.currentSpeed * (index + 1);
         const time = Date.now() * speed;
 
         const a = obj.distance;
         const b = obj.distance * Math.sqrt(1 - obj.eccentricity ** 2);
 
-        obj.planet.position.x = a * Math.cos(time);
-        obj.planet.position.z = b * Math.sin(time);
-        obj.planet.position.y = obj.planet.position.z * Math.tan(THREE.Math.degToRad(obj.inclination));
-
-        const planetPath = planetPaths[index];
-        const initialPosition = { x: a, z: 0, y: 0 };
-
-        if (isPlanetAtPosition(obj.planet.position, initialPosition)) {
-            if (!planetPath.completedOrbit) {
-                drawEllipse(planetPath.points);
-                planetPath.completedOrbit = true;
-            }
-        } else {
-            planetPath.completedOrbit = false;
+        // Actualiza la posición del planeta
+        if (obj.currentSpeed !== slowSpeed) {
+            obj.planet.position.x = a * Math.cos(time);
+            obj.planet.position.z = b * Math.sin(time);
+            obj.planet.position.y = obj.planet.position.z * Math.tan(THREE.Math.degToRad(obj.inclination));
         }
 
+        const planetPath = planetPaths[index];
+
+        // Agregar el punto actual a la trayectoria
         planetPath.points.push(obj.planet.position.clone());
+
+        // Limitar la cantidad de puntos para evitar acumulaciones
+        if (planetPath.points.length > 1000) {
+            planetPath.points.shift(); // Elimina el primer punto para mantener la longitud
+        }
+
+        // Actualizar o dibujar los puntos en la órbita
+        if (planetPath.particles) {
+            planetPath.particles.geometry.setFromPoints(planetPath.points);
+        } else {
+            const geometry = new THREE.BufferGeometry().setFromPoints(planetPath.points);
+            const material = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 });
+            const particles = new THREE.Points(geometry, material);
+            planetPath.particles = particles;
+            scene.add(particles);
+        }
     });
 
     renderer.render(scene, camera);
+}
+
+
+function createPlanetLabel(text) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = '20px Arial';
+    context.fillStyle = 'white';
+    context.fillText(text, 0, 20);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(material);
+
+    // Ajustar el tamaño de la etiqueta
+    const scaleFactor = 0.05; // Ajusta este valor según sea necesario
+    sprite.scale.set(canvas.width * scaleFactor, canvas.height * scaleFactor, 1);
+
+    return sprite;
 }
 
 function isPlanetAtPosition(planetPosition, initialPosition) {
@@ -212,11 +300,37 @@ function isPlanetAtPosition(planetPosition, initialPosition) {
 }
 
 function drawEllipse(points) {
+    if (points.length < 2) return; // Necesitamos al menos dos puntos para dibujar
+
+    // Eliminar el anterior si existe
+    if (points.geometry) {
+        scene.remove(points.geometry);
+    }
+
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const ellipseLine = new THREE.Line(geometry, material);
+    ellipseLine.geometry = geometry; // Guardamos la geometría para eliminarla después
     scene.add(ellipseLine);
 }
+
+let orbitsVisible = true;
+
+document.getElementById('toggle-orbits').addEventListener('click', () => {
+    orbitsVisible = !orbitsVisible; // Cambia entre mostrar y ocultar
+
+    planetPaths.forEach((path, index) => {
+        if (path.particles) {
+            path.particles.visible = orbitsVisible; // Oculta o muestra las órbitas
+        }
+    });
+});
+
+function onMouseMove(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
+window.addEventListener('mousemove', onMouseMove, false);
+
 
 function onDocumentDoubleClick(event) {
     event.preventDefault();
