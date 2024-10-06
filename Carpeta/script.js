@@ -1,14 +1,18 @@
+// Variables globales
 let scene, camera, renderer, controls;
 let planets = [];
+let comets = [];
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 let video;
 const MAX = 499;  // Límite superior
 const MIN = -499; // Límite inferior
 let planetPaths = [];
+let cometPaths = [];
 let normalSpeed = 0.0001;
 let slowSpeed = 0;
-let cometPaths = []; // Arreglo para almacenar las trayectorias de los cometas
+let tooltip;
+
 function createTooltip() {
     tooltip = document.createElement('div');
     tooltip.style.position = 'absolute';
@@ -51,8 +55,6 @@ function init() {
 
     setupVideoBackground();
 
-    
-
     const sun = createPlanet({
         radius: 5,
         textureUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHdGxTN_mqLCVMzlhBrWDmdMVl5z0xVnUcgw&s',
@@ -60,47 +62,12 @@ function init() {
     });
     scene.add(sun);
 
-    const planetData = [
-        { radius: 1, distance: 10, texture: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRc8BsVr__MysKQ6BCotY5BEK0G1hDyrN6zEg&s', url: './planetas/mercurio.html', eccentricity: 0.2, inclination: 6.6 },
-        { radius: 1.5, distance: 15, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg', url: './planetas/venus.html', eccentricity: 0.1, inclination: 7.6 },
-        { radius: 2, distance: 20, texture: 'https://static.diariovasco.com/www/multimedia/201808/22/media/cortadas/mapamundi-kVxD-U60705670296r0C-984x608@Diario%20Vasco.jpg', url: './planetas/tierra.html', eccentricity: 0.017, inclination: 14.0 },
-        { radius: 1.8, distance: 25, texture: 'https://cdn.pixabay.com/photo/2020/02/04/17/04/map-4818860_1280.jpg', url: './planetas/marte.html', eccentricity: 0.093, inclination: 11.2 },
-        { radius: 4, distance: 35, texture: 'https://external-preview.redd.it/JJTceYLFNKh1trdhGTiDAku5dMw24H61e8xyi2_TS6g.jpg?auto=webp&s=1f3d29a36611e75f0fa8bf6e25865809a41771ad', url: './planetas/jupiter.html', eccentricity: 0.048, inclination: 12.0 },
-        { radius: 3, distance: 45, texture: 'https://1.bp.blogspot.com/-KBL1f1hFhWI/Xnk2-C_qlQI/AAAAAAAAUKY/7g78bkJUTMYKtkhUMtOLD_BFiwwnNFQqgCLcBGAsYHQ/s1600/2k_saturn.jpg', url: './planetas/saturno.html', hasRings: true, eccentricity: 0.056, inclination: 11.0 },
-        { radius: 2.5, distance: 55, texture: 'https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg', url: './planetas/urano.html', eccentricity: 0.046, inclination: 12.8 },
-        { radius: 2.2, distance: 65, texture: 'https://static.vecteezy.com/system/resources/previews/002/097/266/original/abstract-background-of-neptune-surface-free-vector.jpg', url: './planetas/neptuno.html', eccentricity: 0.009, inclination: 22.0 }
-    ];
-
-    planetData.forEach(data => {
-        const planet = createPlanet({
-            radius: data.radius,
-            textureUrl: data.texture,
-            position: { x: data.distance, y: 0, z: 0 },
-            url: data.url,
-            hasRings: data.hasRings,
-            inclination: data.inclination
-        });
-
-        planets.push({ planet, distance: data.distance, eccentricity: data.eccentricity, inclination: data.inclination });
-
-        const orbit = createOrbit(data.distance, data.inclination);
-        scene.add(planet);
-        // scene.add(orbit);
-
-        planetPaths.push({
-            planet: planet,
-            points: [],
-            completedOrbit: false,
-            lastPosition: null
-        });
-    });
-    
+    // Cargar los planetas y cometas
+    loadPlanets();
     loadComets();
-    
+
     createAsteroidBelt();
     createAsteroidSphere(5000, 20, 30);
-
-    
 
     const light = new THREE.PointLight(0xffffff, 1.5, 1000);
     light.position.set(0, 0, 0);
@@ -108,12 +75,51 @@ function init() {
 
     animate();
 }
-// Función para cargar cometas
-function loadComets() {
-    fetch('get_comets.php')
+
+// Función para cargar los planetas desde la base de datos
+function loadPlanets() {
+    fetch('get_planets.php')
         .then(response => response.json())
         .then(data => {
-            data.comets.forEach(data => {
+            data.planets.forEach((data) => {
+                const planet = createPlanet({
+                    radius: data.radius,
+                    textureUrl: data.texture_url,
+                    position: { x: data.distance_from_sun, y: 0, z: 0 },
+                    url: data.description_url,
+                    inclination: data.inclination,
+                    eccentricity: data.eccentricity
+                });
+
+                planets.push({ 
+                    planet, 
+                    distance: data.distance_from_sun, 
+                    eccentricity: data.eccentricity, 
+                    inclination: data.inclination, 
+                    currentSpeed: normalSpeed 
+                });
+
+                const orbit = createOrbit(data.distance_from_sun, data.inclination);
+                scene.add(planet);
+                // scene.add(orbit);
+
+                planetPaths.push({
+                    planet: planet,
+                    points: [],
+                    completedOrbit: false,
+                    lastPosition: null
+                });
+            });
+        })
+        .catch(error => console.error('Error loading planet data:', error));
+}
+
+// Función para cargar cometas
+function loadComets() {
+    fetch('get_planets.php')
+        .then(response => response.json())
+        .then(data => {
+            data.comets.forEach((data, index) => {
                 const comet = createComet({
                     diameter: data.diameter ? data.diameter : 0.5, // Ajusta el diámetro según sea necesario
                     position: { 
@@ -121,21 +127,40 @@ function loadComets() {
                         y: 0, 
                         z: 0 
                     },
+                    perihelion: data.perihelion,
+                    inclination: data.inclination ? data.inclination : 0, // Inclinación del cometa
+                    eccentricity: data.eccentricity ? data.eccentricity : 0.5, // Excentricidad de la órbita
+                    index: index // Índice para identificar la trayectoria del cometa
                 });
 
-                planets.push(comet); // Añadir a la lista de planetas (para movimiento)
+                comets.push({ 
+                    comet, 
+                    perihelion: data.perihelion, 
+                    eccentricity: data.eccentricity, 
+                    inclination: data.inclination, 
+                    currentSpeed: normalSpeed 
+                });
+
                 scene.add(comet);
+
+                cometPaths.push({ 
+                    comet: comet, 
+                    points: [], 
+                    particles: null 
+                });
             });
         })
         .catch(error => console.error('Error loading comet data:', error));
 }
+
+// Función para crear un planeta
 function createPlanet({ radius, textureUrl, position, url = null, hasRings = false, inclination = 0 }) {
     const textureLoader = new THREE.TextureLoader();
     const planetTexture = textureLoader.load(textureUrl);
     const geometry = new THREE.SphereGeometry(radius, 32, 32);
     const material = new THREE.MeshBasicMaterial({ map: planetTexture });
     const planet = new THREE.Mesh(geometry, material);
-    
+
     planet.position.set(position.x, position.y, position.z);
     planet.userData = { url };
 
@@ -161,6 +186,21 @@ function createPlanet({ radius, textureUrl, position, url = null, hasRings = fal
     }
 
     return planet;
+}
+
+// Función para crear un cometa
+function createComet({ diameter, position, perihelion, inclination = 0, eccentricity = 0.5, index }) {
+    const geometry = new THREE.SphereGeometry(diameter, 16, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Color rojo para los cometas
+    const comet = new THREE.Mesh(geometry, material);
+
+    comet.position.set(position.x, position.y, position.z);
+    comet.perihelion = perihelion;
+    comet.inclination = inclination;
+    comet.eccentricity = eccentricity;
+    comet.index = index; // Añadimos el índice del cometa
+
+    return comet;
 }
 
 function createOrbit(distance, inclination) {
@@ -223,8 +263,6 @@ function createAsteroidBelt() {
     scene.add(asteroidBelt);
 }
 
-
-
 function createAsteroidSphere(numAsteroids = 600, sphereRadiusMin = 70, sphereRadiusMax = 80) {
     const asteroidSize = 0.05;
 
@@ -252,7 +290,6 @@ function createAsteroidSphere(numAsteroids = 600, sphereRadiusMin = 70, sphereRa
     }
 }
 
-
 function setupVideoBackground() {
     video = document.createElement('video');
     video.src = 'img/fondo1.mp4';
@@ -277,11 +314,11 @@ function animate() {
     controls.update();
     limitCameraPosition();
 
-    // Detección de intersección con las órbitas
+    // Detección de intersección con los planetas
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(planets.map(p => p.planet));
 
-    // Detener el planeta cuando el mouse esté sobre él
+    // Movimiento de los planetas
     planets.forEach((obj, index) => {
         if (intersects.length > 0 && intersects[0].object === obj.planet) {
             obj.currentSpeed = slowSpeed;  // Detener el planeta bajo el mouse
@@ -324,45 +361,48 @@ function animate() {
         }
     });
 
+    // Movimiento de los cometas
+    animateComets();
+
     renderer.render(scene, camera);
 }
 
+// Función para animar los cometas
+function animateComets() {
+    const speed = 0.0002; // Ajusta la velocidad de los cometas
 
+    cometPaths.forEach((cometPath) => {
+        const comet = cometPath.comet;
+        const time = Date.now() * speed;
 
-// Movimiento de los cometas
-    planets.forEach((comet) => {
-        if (comet.type === "comet") { // Verifica que el objeto sea un cometa
-            const speed = 0.0002; // Ajusta la velocidad del cometa
-            const time = Date.now() * speed;
+        // Calcula la posición en la órbita elíptica
+        const a = comet.perihelion;
+        const b = comet.perihelion * Math.sqrt(1 - comet.eccentricity ** 2);
 
-            // Usa los parámetros del cometa para su movimiento
-            comet.position.x = comet.perihelion * Math.cos(time); // Puede ser su perihelio o alguna fórmula
-            comet.position.z = comet.perihelion * Math.sin(time); // Movimiento en el plano XZ
+        comet.position.x = a * Math.cos(time);
+        comet.position.z = b * Math.sin(time);
+        comet.position.y = comet.position.z * Math.tan(THREE.Math.degToRad(comet.inclination));
 
-            // Si tienes inclinación para los cometas
-            comet.position.y = comet.position.z * Math.tan(THREE.Math.degToRad(comet.inclination)); 
+        // Agregar el punto actual a la trayectoria
+        cometPath.points.push(comet.position.clone());
 
-            // Similar al movimiento de los planetas, puedes registrar su trayectoria
-            const cometPath = cometPaths[comet.index]; // Asegúrate de tener un arreglo para las trayectorias de los cometas
+        // Limitar la cantidad de puntos para evitar acumulaciones
+        if (cometPath.points.length > 1000) {
+            cometPath.points.shift(); // Elimina el primer punto para mantener la longitud
+        }
 
-            cometPath.points.push(comet.position.clone());
-
-            if (cometPath.points.length > 1000) {
-                cometPath.points.shift();
-            }
-
-            if (cometPath.particles) {
-                cometPath.particles.geometry.setFromPoints(cometPath.points);
-            } else {
-                const geometry = new THREE.BufferGeometry().setFromPoints(cometPath.points);
-                const material = new THREE.PointsMaterial({ color: 0xff0000, size: 0.5 }); // Color rojo para los cometas
-                const particles = new THREE.Points(geometry, material);
-                cometPath.particles = particles;
-                scene.add(particles);
-            }
-                    }
+        // Actualizar o dibujar los puntos en la órbita
+        if (cometPath.particles) {
+            cometPath.particles.geometry.setFromPoints(cometPath.points);
+        } else {
+            const geometry = new THREE.BufferGeometry().setFromPoints(cometPath.points);
+            const material = new THREE.PointsMaterial({ color: 0xff0000, size: 0.5 });
+            const particles = new THREE.Points(geometry, material);
+            cometPath.particles = particles;
+            scene.add(particles);
+        }
     });
-
+}
 
 function createPlanetLabel(text) {
     const canvas = document.createElement('canvas');
@@ -413,6 +453,12 @@ document.getElementById('toggle-orbits').addEventListener('click', () => {
             path.particles.visible = orbitsVisible; // Oculta o muestra las órbitas
         }
     });
+
+    cometPaths.forEach((path) => {
+        if (path.particles) {
+            path.particles.visible = orbitsVisible; // Oculta o muestra las órbitas de los cometas
+        }
+    });
 });
 
 function onMouseMove(event) {
@@ -435,10 +481,8 @@ function onMouseMove2(event) {
         if (intersectedObject.name === "asteroidBelt") {
             isOverAsteroids = true;
             document.body.style.cursor = 'pointer';  // Cambia el cursor a pointer (mano)
-
             break;
         }
-        
     }
 
     if (!isOverAsteroids) {
@@ -465,9 +509,9 @@ function onDocumentDoubleClick(event) {
     }
 }
 
-window.addEventListener('click', onDocumentDoubleClick);
+window.addEventListener('dblclick', onDocumentDoubleClick);
 
-function startCrisisGame(event){
+function startCrisisGame(event) {
     event.preventDefault();
 
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -480,12 +524,10 @@ function startCrisisGame(event){
     for (let i = 0; i < intersects.length; i++) {
         const intersectedObject = intersects[i].object;
         if (intersectedObject.name === "asteroidBelt") {
-            isOverAsteroids = true
             const url = './crisis1.1/WebGL Builds/index.html';
             window.open(url, '_blank');
             break;
         }
-        
     }
 }
 
