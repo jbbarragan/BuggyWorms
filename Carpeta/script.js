@@ -5,9 +5,10 @@ let mouse = new THREE.Vector2();
 let video;
 const MAX = 499;  // Límite superior
 const MIN = -499; // Límite inferior
+let planetPaths = [];
 
 function limitCameraPosition() {
-    const distanceFromOrigin = Math.sqrt(camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2);
+    const distanceFromOrigin = Math.sqrt(camera.position.x * 2 + camera.position.y * 2 + camera.position.z ** 2);
     if (distanceFromOrigin > MAX) {
         const scale = MAX / distanceFromOrigin;
         camera.position.x *= scale;
@@ -17,27 +18,22 @@ function limitCameraPosition() {
 }
 
 function init() {
-    // Crear la escena
     scene = new THREE.Scene();
-
-    // Crear la cámara
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 100;
 
-    // Crear el renderizador
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.getElementById('container').appendChild(renderer.domElement);
 
-    // Crear controles de órbita
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.maxDistance = 500;  // Límite de zoom
+    controls.minDistance = 10;    // Límite mínimo de zoom
 
-    // Agregar video de fondo
     setupVideoBackground();
 
-    // Crear el Sol usando la misma función
     const sun = createPlanet({
         radius: 5,
         textureUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHdGxTN_mqLCVMzlhBrWDmdMVl5z0xVnUcgw&s',
@@ -45,7 +41,6 @@ function init() {
     });
     scene.add(sun);
 
-    // Datos de los planetas
     const planetData = [
         { radius: 1, distance: 10, texture: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRc8BsVr__MysKQ6BCotY5BEK0G1hDyrN6zEg&s', url: './planetas/mercurio.html', eccentricity: 0.2, inclination: 66 },
         { radius: 1.5, distance: 15, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg', url: './planetas/venus.html', eccentricity: 0.1, inclination: 76 },
@@ -57,7 +52,6 @@ function init() {
         { radius: 2.2, distance: 65, texture: 'https://static.vecteezy.com/system/resources/previews/002/097/266/original/abstract-background-of-neptune-surface-free-vector.jpg', url: './planetas/neptuno.html', eccentricity: 0.009, inclination: 220 }
     ];
 
-    // Crear planetas y órbitas con inclinación
     planetData.forEach(data => {
         const planet = createPlanet({
             radius: data.radius,
@@ -72,22 +66,25 @@ function init() {
 
         const orbit = createOrbit(data.distance, data.inclination);
         scene.add(planet);
-        //scene.add(orbit);
+        // scene.add(orbit);
+
+        planetPaths.push({
+            planet: planet,
+            points: [],
+            completedOrbit: false,
+            lastPosition: null
+        });
     });
 
-    // Crear el cinturón de asteroides entre Marte y Júpiter
     createAsteroidBelt();
 
-    // Luz
     const light = new THREE.PointLight(0xffffff, 1.5, 1000);
     light.position.set(0, 0, 0);
     scene.add(light);
 
-    // Comenzar animación
     animate();
 }
 
-// Función para crear planetas o el Sol
 function createPlanet({ radius, textureUrl, position, url = null, hasRings = false, inclination = 0 }) {
     const textureLoader = new THREE.TextureLoader();
     const planetTexture = textureLoader.load(textureUrl);
@@ -114,7 +111,6 @@ function createPlanet({ radius, textureUrl, position, url = null, hasRings = fal
     return planet;
 }
 
-// Función para crear órbitas
 function createOrbit(distance, inclination) {
     const orbitGeometry = new THREE.RingGeometry(distance - 0.05, distance + 0.05, 64);
     const orbitMaterial = new THREE.MeshBasicMaterial({
@@ -125,19 +121,18 @@ function createOrbit(distance, inclination) {
     });
     const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
     orbit.rotation.x = Math.PI / 2;
-    orbit.rotation.z = THREE.Math.degToRad(inclination); // Inclinación en radianes
+    orbit.rotation.z = THREE.Math.degToRad(inclination); 
     return orbit;
 }
 
-//crear asteroides
 function createAsteroidBelt() {
-    const numAsteroids = 900;  // Más asteroides
-    const beltRadiusMin = 30;  // Radio mínimo (alrededor de Marte)
-    const beltRadiusMax = 30;  // Radio máximo (antes de Júpiter)
-    const asteroidSize = 0.3;  // Tamaño de los asteroides
+    const numAsteroids = 900;
+    const beltRadiusMin = 30;
+    const beltRadiusMax = 30;
+    const asteroidSize = 0.3;
 
     const textureLoader = new THREE.TextureLoader();
-    const asteroidTexture = textureLoader.load('https://static.vecteezy.com/system/resources/previews/046/105/391/non_2x/high-resolution-image-texture-of-asteroid-stone-craters-photo.jpg');  // Textura de asteroides
+    const asteroidTexture = textureLoader.load('https://static.vecteezy.com/system/resources/previews/046/105/391/non_2x/high-resolution-image-texture-of-asteroid-stone-craters-photo.jpg');
 
     for (let i = 0; i < numAsteroids; i++) {
         const angle = Math.random() * 2 * Math.PI;
@@ -155,7 +150,6 @@ function createAsteroidBelt() {
     }
 }
 
-// Función para configurar el video de fondo
 function setupVideoBackground() {
     video = document.createElement('video');
     video.src = 'img/fondo1.mp4';
@@ -175,10 +169,10 @@ function setupVideoBackground() {
     scene.add(sphere);
 }
 
-// Animación
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    limitCameraPosition(); // Llamar a la función para limitar la posición de la cámara
 
     planets.forEach((obj, index) => {
         const speed = 0.0001 * (index + 1);
@@ -187,15 +181,41 @@ function animate() {
         const a = obj.distance;
         const b = obj.distance * Math.sqrt(1 - obj.eccentricity ** 2);
 
-        // Movimiento de la órbita con inclinación
         obj.planet.position.x = a * Math.cos(time);
         obj.planet.position.z = b * Math.sin(time);
-
-        // Ajustar la posición 'y' para tener en cuenta la inclinación
         obj.planet.position.y = obj.planet.position.z * Math.tan(THREE.Math.degToRad(obj.inclination));
+
+        const planetPath = planetPaths[index];
+        const initialPosition = { x: a, z: 0, y: 0 };
+
+        if (isPlanetAtPosition(obj.planet.position, initialPosition)) {
+            if (!planetPath.completedOrbit) {
+                drawEllipse(planetPath.points);
+                planetPath.completedOrbit = true;
+            }
+        } else {
+            planetPath.completedOrbit = false;
+        }
+
+        planetPath.points.push(obj.planet.position.clone());
     });
 
     renderer.render(scene, camera);
+}
+
+function isPlanetAtPosition(planetPosition, initialPosition) {
+    const threshold = 0.5; 
+    return (
+        Math.abs(planetPosition.x - initialPosition.x) < threshold &&
+        Math.abs(planetPosition.z - initialPosition.z) < threshold
+    );
+}
+
+function drawEllipse(points) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const ellipseLine = new THREE.Line(geometry, material);
+    scene.add(ellipseLine);
 }
 
 function onDocumentDoubleClick(event) {
@@ -216,4 +236,4 @@ function onDocumentDoubleClick(event) {
 
 window.addEventListener('click', onDocumentDoubleClick);
 
-init();
+init()
