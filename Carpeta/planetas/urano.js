@@ -31,7 +31,7 @@ function init() {
 
     // Esfera de la Tierra (100 veces más grande)
     const earthGeometry = new THREE.SphereGeometry(150, 32, 32);
-    const earthTexture = new THREE.TextureLoader().load('https://cdn.pixabay.com/photo/2020/02/04/17/04/map-4818860_1280.jpg');
+    const earthTexture = new THREE.TextureLoader().load('https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg');
     const earthMaterial = new THREE.MeshBasicMaterial({ map: earthTexture });
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
@@ -43,14 +43,6 @@ function animate() {
 
     // Rotación de la Tierra
     earth.rotation.y += 0.01;
-
-    // Órbita de la ISS
-    if (iss) {
-        const time = Date.now() * 0.001;
-        const issDistance = 250; // Distancia más corta de la ISS a la Tierra
-        iss.position.set(Math.cos(time * 2) * issDistance, 0, Math.sin(time * 2) * issDistance);
-        iss.rotation.y += 0.01; // Rotación de la ISS
-    }
 
     renderer.render(scene, camera);
 }
