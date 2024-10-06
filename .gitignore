@@ -2,3 +2,5 @@ Library/
 Logs/
 *.zip
 'WebGL Builds'/
+*.csproj
+*.sln
