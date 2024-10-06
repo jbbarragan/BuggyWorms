@@ -380,6 +380,7 @@ function onMouseMove2(event) {
         if (intersectedObject.name === "asteroidBelt") {
             isOverAsteroids = true;
             document.body.style.cursor = 'pointer';  // Cambia el cursor a pointer (mano)
+
             break;
         }
         
@@ -410,5 +411,29 @@ function onDocumentDoubleClick(event) {
 }
 
 window.addEventListener('click', onDocumentDoubleClick);
+
+function startCrisisGame(event){
+    event.preventDefault();
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Detección de objetos bajo el mouse
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    for (let i = 0; i < intersects.length; i++) {
+        const intersectedObject = intersects[i].object;
+        if (intersectedObject.name === "asteroidBelt") {
+            isOverAsteroids = true
+            const url = './crisis1.1/WebGL Builds/index.html';
+            window.open(url, '_blank');
+            break;
+        }
+        
+    }
+}
+
+window.addEventListener('click', startCrisisGame);
 
 init();
