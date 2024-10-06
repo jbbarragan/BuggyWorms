@@ -36,6 +36,28 @@ function init() {
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
 
+// Agregar evento de clic a la Tierra
+    earth.userData.interactable = true; // Marcar la Tierra como interactiva
+    earth.callback = travelAroundEarth; // Asignar la función de viaje
+
+    // Iniciar el rayo para detectar clics
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', (event) => {
+        // Calcular la posición del mouse en el espacio de la escena
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // Actualizar el rayo
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects([earth]);
+
+        if (intersects.length > 0) {
+            // Si se hace clic en la Tierra, ejecutar la función de viaje
+            travelAroundEarth();
+        }
+    });
 }
 
 function animate() {
@@ -77,8 +99,36 @@ function setupVideoBackground() {
     const videoSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(videoSphere);
 }
+// Función para el viaje alrededor de la Tierra
+function travelAroundEarth() {
+    const travelDistance = 500; // Distancia del viaje
+    const duration = 3000; // Duración del viaje en milisegundos
+    const startTime = performance.now();
 
-// Ajustar el tamaño del canvas al cambiar el tamaño de la ventana
+    function animateTravel() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Calcular nueva posición de la cámara
+        const angle = progress * Math.PI * 2; // Completa un viaje alrededor de la Tierra
+        camera.position.x = Math.cos(angle) * travelDistance;
+        camera.position.z = Math.sin(angle) * travelDistance;
+
+        // Mantener la cámara enfocada en la Tierra
+        camera.lookAt(earth.position);
+
+        if (progress < 1) {
+            requestAnimationFrame(animateTravel); // Continuar animando
+        } else {
+            // Una vez terminado el viaje, volver a la posición inicial
+            setTimeout(() => {
+                window.location.href = '../index.html'; // Redirigir a index.html
+            }, 1000); // Esperar 1 segundo antes de redirigir
+        }
+    }
+
+    animateTravel(); // Iniciar la animación del viaje
+}// Ajustar el tamaño del canvas al cambiar el tamaño de la ventana
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

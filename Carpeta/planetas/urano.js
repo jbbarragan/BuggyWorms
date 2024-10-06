@@ -1,5 +1,5 @@
 let scene, camera, renderer;
-let earth, iss;
+let urano; // Cambié el nombre de la variable a urano
 let video, videoTexture;
 
 init();
@@ -29,20 +29,23 @@ function init() {
     // Fondo de video
     setupVideoBackground();
 
-    // Esfera de la Tierra (100 veces más grande)
-    const earthGeometry = new THREE.SphereGeometry(150, 32, 32);
-    const earthTexture = new THREE.TextureLoader().load('https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg');
-    const earthMaterial = new THREE.MeshBasicMaterial({ map: earthTexture });
-    earth = new THREE.Mesh(earthGeometry, earthMaterial);
-    scene.add(earth);
+    // Esfera de Urano
+    const uranoGeometry = new THREE.SphereGeometry(150, 32, 32); // Tamaño del planeta
+    const uranoTexture = new THREE.TextureLoader().load('https://www.rtve.es/imagenes/462126main-image-1686-946-710/1276194002537.jpg'); // Textura de Urano
+    const uranoMaterial = new THREE.MeshBasicMaterial({ map: uranoTexture });
+    urano = new THREE.Mesh(uranoGeometry, uranoMaterial);
+    scene.add(urano);
 
+    // Añadir evento de clic a Urano
+    urano.userData = { clickable: true };
+    window.addEventListener('click', onDocumentMouseDown);
 }
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // Rotación de la Tierra
-    earth.rotation.y += 0.01;
+    // Rotación de Urano
+    urano.rotation.y += 0.01;
 
     renderer.render(scene, camera);
 }
@@ -50,7 +53,7 @@ function animate() {
 function setupVideoBackground() {
     // Crear el elemento de video
     video = document.createElement('video');
-    video.src = '../img/fondo1.mp4';
+    video.src = '../img/fondo1.mp4'; 
     video.load();
     video.play();
     video.loop = true;
@@ -70,6 +73,70 @@ function setupVideoBackground() {
     scene.add(videoSphere);
 }
 
+function onDocumentMouseDown(event) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects([urano]); // Intersección con Urano
+
+    if (intersects.length > 0 && intersects[0].object.userData.clickable) {
+        travelAroundUranus();
+    }
+}
+
+function travelAroundUranus() {
+    const travelTime = 6000; // Tiempo total para el viaje
+    const radius = 300; // Radio del viaje alrededor de Urano
+    const startAngle = Math.PI / 2; // Comenzar desde arriba
+
+    const startTime = Date.now();
+
+    function animateTravel() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / travelTime, 1);
+
+        // Calcular el ángulo de la cámara en función del tiempo transcurrido
+        const angle = startAngle + (t * Math.PI * 2); // Recorrer 360 grados
+        camera.position.x = radius * Math.cos(angle);
+        camera.position.y = radius * Math.sin(angle);
+        camera.position.z = 150; // Altura constante
+        camera.lookAt(urano.position); // Mirar a Urano
+
+        if (t < 1) {
+            requestAnimationFrame(animateTravel);
+        } else {
+            returnToUranus(); // Volver a la posición inicial
+        }
+    }
+
+    animateTravel();
+}
+
+function returnToUranus() {
+    const returnTime = 2000; 
+    const startTime = Date.now();
+
+    function animateReturn() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / returnTime, 1);
+
+        // Volver a la posición original
+        camera.position.lerpVectors(camera.position.clone(), new THREE.Vector3(0, 0, 700), t);
+        camera.lookAt(urano.position); 
+
+        if (t < 1) {
+            requestAnimationFrame(animateReturn);
+        } else {
+            window.location.href = '../index.html'; // Redirigir al índice
+        }
+    }
+
+    animateReturn();
+}
 // Ajustar el tamaño del canvas al cambiar el tamaño de la ventana
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;

@@ -1,5 +1,5 @@
 let scene, camera, renderer;
-let earth, iss;
+let venus; // Cambié el nombre de la variable a venus
 let video, videoTexture;
 
 init();
@@ -29,28 +29,23 @@ function init() {
     // Fondo de video
     setupVideoBackground();
 
-    // Esfera de la Tierra (100 veces más grande)
-    const earthGeometry = new THREE.SphereGeometry(150, 32, 32);
-    const earthTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg');
-    const earthMaterial = new THREE.MeshBasicMaterial({ map: earthTexture });
-    earth = new THREE.Mesh(earthGeometry, earthMaterial);
-    scene.add(earth);
+    // Esfera de Venus
+    const venusGeometry = new THREE.SphereGeometry(150, 32, 32); // Tamaño del planeta
+    const venusTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg'); // Textura de Venus
+    const venusMaterial = new THREE.MeshBasicMaterial({ map: venusTexture });
+    venus = new THREE.Mesh(venusGeometry, venusMaterial);
+    scene.add(venus);
 
+    // Añadir evento de clic a Venus
+    venus.userData = { clickable: true };
+    window.addEventListener('click', onDocumentMouseDown);
 }
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // Rotación de la Tierra
-    earth.rotation.y += 0.01;
-
-    // Órbita de la ISS
-    if (iss) {
-        const time = Date.now() * 0.001;
-        const issDistance = 250; // Distancia más corta de la ISS a la Tierra
-        iss.position.set(Math.cos(time * 2) * issDistance, 0, Math.sin(time * 2) * issDistance);
-        iss.rotation.y += 0.01; // Rotación de la ISS
-    }
+    // Rotación de Venus
+    venus.rotation.y += 0.01;
 
     renderer.render(scene, camera);
 }
@@ -58,7 +53,7 @@ function animate() {
 function setupVideoBackground() {
     // Crear el elemento de video
     video = document.createElement('video');
-    video.src = '../img/fondo1.mp4';
+    video.src = '../img/fondo1.mp4'; 
     video.load();
     video.play();
     video.loop = true;
@@ -76,6 +71,71 @@ function setupVideoBackground() {
     });
     const videoSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(videoSphere);
+}
+
+function onDocumentMouseDown(event) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects([venus]); // Intersección con Venus
+
+    if (intersects.length > 0 && intersects[0].object.userData.clickable) {
+        travelAroundVenus();
+    }
+}
+
+function travelAroundVenus() {
+    const travelTime = 6000; // Tiempo total para el viaje
+    const radius = 300; // Radio del viaje alrededor de Venus
+    const startAngle = Math.PI / 2; // Comenzar desde arriba
+
+    const startTime = Date.now();
+
+    function animateTravel() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / travelTime, 1);
+
+        // Calcular el ángulo de la cámara en función del tiempo transcurrido
+        const angle = startAngle + (t * Math.PI * 2); // Recorrer 360 grados
+        camera.position.x = radius * Math.cos(angle);
+        camera.position.y = radius * Math.sin(angle);
+        camera.position.z = 150; // Altura constante
+        camera.lookAt(venus.position); // Mirar a Venus
+
+        if (t < 1) {
+            requestAnimationFrame(animateTravel);
+        } else {
+            returnToVenus(); // Volver a la posición inicial
+        }
+    }
+
+    animateTravel();
+}
+
+function returnToVenus() {
+    const returnTime = 2000; 
+    const startTime = Date.now();
+
+    function animateReturn() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / returnTime, 1);
+
+        // Volver a la posición original
+        camera.position.lerpVectors(camera.position.clone(), new THREE.Vector3(0, 0, 700), t);
+        camera.lookAt(venus.position); 
+
+        if (t < 1) {
+            requestAnimationFrame(animateReturn);
+        } else {
+            window.location.href = '../index.html'; // Redirigir al índice
+        }
+    }
+
+    animateReturn();
 }
 
 // Ajustar el tamaño del canvas al cambiar el tamaño de la ventana

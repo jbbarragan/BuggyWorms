@@ -103,20 +103,5 @@
 
     <!-- Archivo script.js separado -->
     <script src="script.js"></script>
-
-    <script>
-        // Actualiza el reloj en el centro de la barra con la hora actual
-        function updateClock() {
-            const clockElement = document.getElementById('clock');
-            const now = new Date();
-            let hours = now.getHours();
-            let minutes = now.getMinutes();
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            clockElement.textContent = hours + ':' + minutes;
-        }
-
-        // Llama a la función de actualizar reloj cada segundo
-        setInterval(updateClock, 1000);
-    </script>
 </body>
 </html>

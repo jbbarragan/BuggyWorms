@@ -11,8 +11,7 @@ function init() {
 
     // Cámara
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-    camera.position.z = 700;
-
+    camera.position.set(0, 0, 700); // Posición inicial de la cámara
     // Renderizador
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -40,12 +39,16 @@ function init() {
     createSaturnRings(saturn.position);
 
     // Esfera de la Tierra
-    const earthGeometry = new THREE.SphereGeometry(50, 32, 32); // Ajusta el tamaño según sea necesario
-    const earthTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/9/9b/Earth_political_divisions.jpg'); // Asegúrate de usar una textura válida
+    const earthGeometry = new THREE.SphereGeometry(50, 32, 32);
+    const earthTexture = new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/9/9b/Earth_political_divisions.jpg');
     const earthMaterial = new THREE.MeshBasicMaterial({ map: earthTexture });
-    earth = new THREE.Mesh(earthGeometry, earthMaterial); // Inicializa 'earth'
+    earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
-}
+
+    // Añadir evento de clic a la Tierra
+    earth.userData = { clickable: true };
+    window.addEventListener('click', onDocumentMouseDown);
+    }
 
 function createSaturnRings(position) {
     const ringCount = 7;
@@ -65,11 +68,7 @@ function createSaturnRings(position) {
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // Rotación de la Tierra
-    if (earth) {
-        earth.rotation.y += 0.01; // Asegúrate de que 'earth' esté definido
-    }
+	earth.rotation.y += 0.01; // Rotación de la Tierra
 
     renderer.render(scene, camera);
 }
@@ -79,13 +78,8 @@ function setupVideoBackground() {
     video = document.createElement('video');
     video.src = '../img/fondo1.mp4'; // Asegúrate de que esta ruta sea correcta
     video.load();
+	video.play();
     video.loop = true;
-
-    video.addEventListener('loadeddata', function () {
-        video.play();
-    });
-
-    // Crear textura a partir del video
     videoTexture = new THREE.VideoTexture(video);
 
     // Crear una esfera grande para el fondo
@@ -98,6 +92,69 @@ function setupVideoBackground() {
     });
     const videoSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(videoSphere);
+}
+
+function onDocumentMouseDown(event) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects([earth]);
+
+    if (intersects.length > 0 && intersects[0].object.userData.clickable) {
+        travelAroundEarth();
+    }
+}
+
+function travelAroundEarth() {
+    const travelDistance = 200; // Acercarse a la Tierra
+    const travelTime = 4000; 
+
+    const originalPosition = camera.position.clone(); 
+    const targetPosition = new THREE.Vector3(0, 0, travelDistance); 
+
+    const startTime = Date.now();
+
+    function animateTravel() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / travelTime, 1);
+
+        camera.position.lerpVectors(originalPosition, targetPosition, t);
+        camera.lookAt(earth.position); 
+
+        if (t < 1) {
+            requestAnimationFrame(animateTravel);
+        } else {
+            returnToEarth(); // Comenzar a regresar
+        }
+    }
+
+    animateTravel();
+}
+
+function returnToEarth() {
+    const returnTime = 2000; 
+    const startTime = Date.now();
+
+    function animateReturn() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / returnTime, 1);
+
+        // Volver a la posición original
+        camera.position.lerpVectors(new THREE.Vector3(0, 0, 200), new THREE.Vector3(0, 0, 700), t);
+        camera.lookAt(earth.position); 
+
+        if (t < 1) {
+            requestAnimationFrame(animateReturn);
+        } else {
+            window.location.href = '../index.html'; 
+        }
+    }
+
+    animateReturn();
 }
 
 // Ajustar el tamaño del canvas al cambiar el tamaño de la ventana

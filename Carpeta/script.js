@@ -8,10 +8,7 @@ const MIN = -499; // Límite inferior
 let planetPaths = [];
 let normalSpeed = 0.0001;
 let slowSpeed = 0;
-let currentSpeed = normalSpeed;
-let tooltip;
-
-// Crear y agregar un cuadro de texto transparente
+let cometPaths = []; // Arreglo para almacenar las trayectorias de los cometas
 function createTooltip() {
     tooltip = document.createElement('div');
     tooltip.style.position = 'absolute';
@@ -97,7 +94,9 @@ function init() {
             lastPosition: null
         });
     });
-
+    
+    loadComets();
+    
     createAsteroidBelt();
     createAsteroidSphere(5000, 20, 30);
 
@@ -109,7 +108,27 @@ function init() {
 
     animate();
 }
+// Función para cargar cometas
+function loadComets() {
+    fetch('get_comets.php')
+        .then(response => response.json())
+        .then(data => {
+            data.comets.forEach(data => {
+                const comet = createComet({
+                    diameter: data.diameter ? data.diameter : 0.5, // Ajusta el diámetro según sea necesario
+                    position: { 
+                        x: data.perihelion, // Establece la posición inicial usando el perihelio
+                        y: 0, 
+                        z: 0 
+                    },
+                });
 
+                planets.push(comet); // Añadir a la lista de planetas (para movimiento)
+                scene.add(comet);
+            });
+        })
+        .catch(error => console.error('Error loading comet data:', error));
+}
 function createPlanet({ radius, textureUrl, position, url = null, hasRings = false, inclination = 0 }) {
     const textureLoader = new THREE.TextureLoader();
     const planetTexture = textureLoader.load(textureUrl);
@@ -307,6 +326,42 @@ function animate() {
 
     renderer.render(scene, camera);
 }
+
+
+
+// Movimiento de los cometas
+    planets.forEach((comet) => {
+        if (comet.type === "comet") { // Verifica que el objeto sea un cometa
+            const speed = 0.0002; // Ajusta la velocidad del cometa
+            const time = Date.now() * speed;
+
+            // Usa los parámetros del cometa para su movimiento
+            comet.position.x = comet.perihelion * Math.cos(time); // Puede ser su perihelio o alguna fórmula
+            comet.position.z = comet.perihelion * Math.sin(time); // Movimiento en el plano XZ
+
+            // Si tienes inclinación para los cometas
+            comet.position.y = comet.position.z * Math.tan(THREE.Math.degToRad(comet.inclination)); 
+
+            // Similar al movimiento de los planetas, puedes registrar su trayectoria
+            const cometPath = cometPaths[comet.index]; // Asegúrate de tener un arreglo para las trayectorias de los cometas
+
+            cometPath.points.push(comet.position.clone());
+
+            if (cometPath.points.length > 1000) {
+                cometPath.points.shift();
+            }
+
+            if (cometPath.particles) {
+                cometPath.particles.geometry.setFromPoints(cometPath.points);
+            } else {
+                const geometry = new THREE.BufferGeometry().setFromPoints(cometPath.points);
+                const material = new THREE.PointsMaterial({ color: 0xff0000, size: 0.5 }); // Color rojo para los cometas
+                const particles = new THREE.Points(geometry, material);
+                cometPath.particles = particles;
+                scene.add(particles);
+            }
+                    }
+    });
 
 
 function createPlanetLabel(text) {

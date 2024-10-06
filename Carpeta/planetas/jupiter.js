@@ -1,7 +1,8 @@
 let scene, camera, renderer;
 let earth, iss;
 let video, videoTexture;
-
+let isTraveling = false; // Para controlar el estado del viaje
+let travelTime = 2000; // Duración del viaje en milisegundos
 init();
 animate();
 
@@ -36,6 +37,63 @@ function init() {
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
 
+// Agregar evento de clic a la Tierra
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', (event) => {
+        // Calcular la posición del mouse
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // Actualizar el raycaster
+        raycaster.setFromCamera(mouse, camera);
+
+        // Calcular objetos intersectados
+        const intersects = raycaster.intersectObject(earth);
+
+        // Si se intersectó la Tierra
+        if (intersects.length > 0) {
+            travelToEarth();
+        }
+    });
+}
+
+function travelToEarth() {
+    if (isTraveling) return; // Evitar múltiples clics
+    isTraveling = true;
+
+    // Animación de viaje alrededor de la Tierra
+    const startTime = Date.now();
+    const startPosition = camera.position.clone(); // Posición inicial de la cámara
+    const endPosition = new THREE.Vector3(0, 0, 700); // Posición final (vuelve a la Tierra)
+
+    function animateTravel() {
+        const elapsedTime = Date.now() - startTime;
+        const t = Math.min(elapsedTime / travelTime, 1); // Normalizar el tiempo entre 0 y 1
+
+        // Movimiento de la cámara
+        const angle = t * Math.PI * 2; // Un viaje alrededor de la Tierra
+        camera.position.x = Math.cos(angle) * 300; // Radio del viaje
+        camera.position.z = Math.sin(angle) * 300;
+
+        // Enfocar hacia la Tierra
+        camera.lookAt(earth.position);
+
+        if (t < 1) {
+            requestAnimationFrame(animateTravel);
+        } else {
+            // Volver a la posición inicial
+            camera.position.copy(startPosition);
+            camera.lookAt(earth.position);
+            isTraveling = false; // Viaje completado
+            setTimeout(() => {
+                window.location.href = '../index.html'; // Redirigir a index.html después de un breve retraso
+            }, 500);
+        }
+    }
+
+    animateTravel();
 }
 
 function animate() {
