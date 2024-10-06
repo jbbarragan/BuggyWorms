@@ -236,4 +236,4 @@ function onDocumentDoubleClick(event) {
 
 window.addEventListener('click', onDocumentDoubleClick);
 
-init()
+init();
