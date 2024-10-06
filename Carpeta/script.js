@@ -9,7 +9,23 @@ let planetPaths = [];
 let normalSpeed = 0.0001;
 let slowSpeed = 0;
 let currentSpeed = normalSpeed;
+let tooltip;
 
+// Crear y agregar un cuadro de texto transparente
+function createTooltip() {
+    tooltip = document.createElement('div');
+    tooltip.style.position = 'absolute';
+    tooltip.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    tooltip.style.color = 'black';
+    tooltip.style.padding = '5px';
+    tooltip.style.borderRadius = '5px';
+    tooltip.style.display = 'none'; // Se oculta inicialmente
+    tooltip.style.pointerEvents = 'none'; // No interfiere con el clic del mouse
+    tooltip.innerHTML = 'Jugar';
+    document.body.appendChild(tooltip);
+}
+
+createTooltip();
 
 function limitCameraPosition() {
     const distanceFromOrigin = Math.sqrt(camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2);
@@ -37,6 +53,8 @@ function init() {
     controls.minDistance = 10;    // Límite mínimo de zoom
 
     setupVideoBackground();
+
+    
 
     const sun = createPlanet({
         radius: 5,
@@ -82,6 +100,8 @@ function init() {
 
     createAsteroidBelt();
     createAsteroidSphere(5000, 20, 30);
+
+    
 
     const light = new THREE.PointLight(0xffffff, 1.5, 1000);
     light.position.set(0, 0, 0);
@@ -145,6 +165,8 @@ function createAsteroidBelt() {
     const asteroidSize = 0.3;
     const beltInclination = THREE.Math.degToRad(-15.9); // Convertir grados a radianes
 
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
     const textureLoader = new THREE.TextureLoader();
     const asteroidTexture = textureLoader.load('https://static.vecteezy.com/system/resources/previews/046/105/391/non_2x/high-resolution-image-texture-of-asteroid-stone-craters-photo.jpg');
 
@@ -152,23 +174,37 @@ function createAsteroidBelt() {
         const angle = Math.random() * 2 * Math.PI;
         const radius = THREE.MathUtils.lerp(beltRadiusMin, beltRadiusMax, Math.random());
 
-        const asteroidGeometry = new THREE.SphereGeometry(asteroidSize, 8, 8);
-        const asteroidMaterial = new THREE.MeshBasicMaterial({ map: asteroidTexture });
-        const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
-
         // Posición de los asteroides en un anillo (en el plano xz)
         const x = radius * Math.cos(angle);
         const z = radius * Math.sin(angle);
         const y = (Math.random() - 0.5) * 2;
 
         // Aplicar inclinación al cinturón (rotación en el eje X)
-        asteroid.position.x = x;
-        asteroid.position.y = y * Math.cos(beltInclination) - z * Math.sin(beltInclination);
-        asteroid.position.z = y * Math.sin(beltInclination) + z * Math.cos(beltInclination);
+        const inclinedX = x;
+        const inclinedY = y * Math.cos(beltInclination) - z * Math.sin(beltInclination);
+        const inclinedZ = y * Math.sin(beltInclination) + z * Math.cos(beltInclination);
 
-        scene.add(asteroid);
+        // Añadir la posición del asteroide a la geometría
+        positions.push(inclinedX, inclinedY, inclinedZ);
     }
+
+    // Convertir los datos de posición en un BufferAttribute para optimización
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+        map: asteroidTexture,
+        size: asteroidSize,
+        transparent: true,
+        opacity: 0.8
+    });
+
+    // Crear la nube de asteroides como un solo objeto
+    const asteroidBelt = new THREE.Points(geometry, material);
+    asteroidBelt.name = "asteroidBelt"; // Añadir nombre para la detección con raycaster
+    scene.add(asteroidBelt);
 }
+
+
 
 function createAsteroidSphere(numAsteroids = 600, sphereRadiusMin = 70, sphereRadiusMax = 80) {
     const asteroidSize = 0.05;
@@ -329,8 +365,33 @@ function onMouseMove(event) {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-window.addEventListener('mousemove', onMouseMove, false);
+function onMouseMove2(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+    // Detección de objetos bajo el mouse
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    let isOverAsteroids = false;
+
+    for (let i = 0; i < intersects.length; i++) {
+        const intersectedObject = intersects[i].object;
+        if (intersectedObject.name === "asteroidBelt") {
+            isOverAsteroids = true;
+            document.body.style.cursor = 'pointer';  // Cambia el cursor a pointer (mano)
+            break;
+        }
+        
+    }
+
+    if (!isOverAsteroids) {
+        document.body.style.cursor = 'auto';  // Restablece el cursor al valor predeterminado
+    }
+}
+
+window.addEventListener('mousemove', onMouseMove, false);
+window.addEventListener('mousemove', onMouseMove2, false);
 
 function onDocumentDoubleClick(event) {
     event.preventDefault();

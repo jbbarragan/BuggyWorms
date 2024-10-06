@@ -1,5 +1,5 @@
 let scene, camera, renderer;
-let earth, moon, iss;
+let earth, moon, issGroup;
 let video, videoTexture;
 
 init();
@@ -10,7 +10,7 @@ function init() {
     scene = new THREE.Scene();
 
     // Cámara
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000); // Aumenta el valor de la distancia de cámara
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     camera.position.z = 700;
 
     // Renderizador
@@ -29,26 +29,47 @@ function init() {
     // Fondo de video
     setupVideoBackground();
 
-    // Esfera de la Tierra (100 veces más grande)
+    // Esfera de la Tierra
     const earthGeometry = new THREE.SphereGeometry(150, 32, 32);
     const earthTexture = new THREE.TextureLoader().load('https://static.diariovasco.com/www/multimedia/201808/22/media/cortadas/mapamundi-kVxD-U60705670296r0C-984x608@Diario%20Vasco.jpg'); // Textura de la Tierra
     const earthMaterial = new THREE.MeshBasicMaterial({ map: earthTexture });
     earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
 
-    // Esfera de la Luna (100 veces más grande y más lejos)
-    const moonGeometry = new THREE.SphereGeometry(60, 32, 32); // Proporción de tamaño de la Luna
+    // Esfera de la Luna
+    const moonGeometry = new THREE.SphereGeometry(60, 32, 32);
     const moonTexture = new THREE.TextureLoader().load('https://t4.ftcdn.net/jpg/06/67/12/37/360_F_667123727_SD1QORXK3Ezvgoja8aTwh9k2IJ2NGsvN.jpg'); // Textura de la Luna
     const moonMaterial = new THREE.MeshBasicMaterial({ map: moonTexture });
     moon = new THREE.Mesh(moonGeometry, moonMaterial);
     scene.add(moon);
 
+    // Grupo de ISS
+    issGroup = new THREE.Group();
+    scene.add(issGroup);
+
     // Cargar el modelo 3D de la ISS
     const loader = new THREE.GLTFLoader();
     loader.load('../img/ISS_stationary.glb', function (gltf) {
-        iss = gltf.scene;
-        iss.scale.set(.1, .1,.1);  // Aumentar el tamaño del modelo ISS
-        scene.add(iss);
+        const issModel = gltf.scene;
+        issModel.scale.set(0.1, 0.1, 0.1);  // Escala del modelo ISS
+
+        // Crear varias ISS distribuidas en una esfera
+        const numISS = 400; // Número de ISS
+        const radius = 170; // Radio de la esfera
+
+        for (let i = 0; i < numISS; i++) {
+            const theta = Math.acos(2 * Math.random() - 1); // Ángulo theta
+            const phi = 2 * Math.PI * Math.random(); // Ángulo phi
+
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.sin(theta) * Math.sin(phi);
+            const z = radius * Math.cos(theta);
+
+            const issClone = issModel.clone();
+            issClone.position.set(x, y, z);
+            issClone.lookAt(earth.position); // Hacer que la ISS apunte hacia la Tierra
+            issGroup.add(issClone);
+        }
     });
 }
 
@@ -58,17 +79,13 @@ function animate() {
     // Rotación de la Tierra
     earth.rotation.y += 0.01;
 
-    // Órbita de la Luna (más lejana y más grande)
-    const time = Date.now() * 0.001;
-    const moonDistance = 600; // Distancia de la Luna 100 veces mayor
+    // Órbita de la Luna
+    const time = Date.now() * 0.0015;
+    const moonDistance = 600;
     moon.position.set(Math.cos(time) * moonDistance, 0, Math.sin(time) * moonDistance);
 
-    // Órbita de la ISS (más cercana a la Tierra, pero ajustada)
-    if (iss) {
-        const issDistance = 250; // Distancia más corta de la ISS a la Tierra, 100 veces mayor
-        iss.position.set(Math.cos(time * 2) * issDistance, 0, Math.sin(time * 2) * issDistance);
-        iss.rotation.y += 0.01; // Rotación de la ISS
-    }
+    // Rotar el grupo de ISS alrededor de la Tierra
+    //issGroup.rotation.y += 0.005;
 
     renderer.render(scene, camera);
 }
