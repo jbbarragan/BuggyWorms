@@ -1,4 +1,3 @@
-// Variables globales
 let scene, camera, renderer, controls;
 let planets = [];
 let comets = [];

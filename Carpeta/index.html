@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -17,6 +17,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-direction: column; /* Cambiado para acomodar etiquetas de décadas */
         }
 
         /* Estilo del botón */
@@ -26,7 +27,7 @@
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
-            margin-right: 20px;
+            margin-bottom: 10px; /* Espacio debajo del botón */
         }
 
         /* Estilo del reloj en el centro */
@@ -39,7 +40,7 @@
         /* Estilo del slider */
         #timeSlider {
             -webkit-appearance: none;
-            width: 40%;
+            width: 25%; /* Ocupa el 25% de la pantalla */
             height: 40px;
             background: rgb(15, 15, 15);
             border-radius: 10px;
@@ -80,6 +81,21 @@
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
             cursor: pointer;
         }
+
+        /* Estilo para las etiquetas de las décadas */
+        .decade-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 25%; /* Cambiado para coincidir con el ancho del slider */
+            margin-top: 5px; /* Espacio entre la barra y las etiquetas */
+        }
+
+        .decade {
+            position: relative;
+            top: -25px; /* Ajustar la posición de las etiquetas */
+            font-size: 14px; /* Tamaño de fuente de las etiquetas */
+            color: white; /* Cambiado a blanco */
+        }
     </style>
 </head>
 <body>
@@ -91,10 +107,19 @@
         <button id="toggle-orbits">Toggle Orbits</button>
 
         <!-- Reloj en el centro -->
-        
+        <div id="clock"></div>
 
         <!-- Barra deslizante para ajustar el tiempo de la órbita -->
         <input id="timeSlider" type="range" min="-100" max="100" value="0" step="1">
+
+        <!-- Etiquetas de décadas -->
+        <div class="decade-labels">
+            <span class="decade">1905</span>
+
+            <span class="decade">1965</span>
+          
+            <span class="decade">2025</span>
+        </div>
     </div>
 
     <!-- Cargar Three.js y OrbitControls -->
